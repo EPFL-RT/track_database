@@ -19,6 +19,7 @@ setup(
     packages=["track_database"],
     package_dir={"track_database": "track_database"},
     package_data={"track_database": ["data/*.csv"]},
+    include_package_data=True,
     url="https://github.com/EPFL-RT-Driverless/track_database",
     author="tudoroancea",
     description="A Python package to gather some default Formula Student tracks as well as some utility functions to import/export them in CSV format and to create new custom tracks.",
