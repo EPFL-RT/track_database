@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -104,6 +106,15 @@ inline Eigen::MatrixX2d to_matrix(const std::vector<std::pair<double, double>> &
 	return m;
 }
 
+inline std::ofstream open_for_writing(const std::filesystem::path &filename) {
+	std::ofstream f(filename);
+	if (!f) {
+		throw std::runtime_error("could not open file " + filename.string() + " for writing");
+	}
+	f << std::setprecision(std::numeric_limits<double>::max_digits10);
+	return f;
+}
+
 inline std::optional<std::filesystem::path>
 find_file(const std::filesystem::path &folder, const std::string &name, const std::string &suffix) {
 	const auto preferred = folder / (name + suffix);
@@ -188,7 +199,7 @@ inline void save_cones(const std::filesystem::path &filename,
 		       const Eigen::MatrixX2d &yellow_cones = Eigen::MatrixX2d::Zero(0, 2),
 		       const Eigen::MatrixX2d &big_orange_cones = Eigen::MatrixX2d::Zero(0, 2),
 		       const Eigen::MatrixX2d &small_orange_cones = Eigen::MatrixX2d::Zero(0, 2)) {
-	std::ofstream f(filename);
+	auto f = detail::open_for_writing(filename);
 	f << "cone_type,X,Y,Z,std_X,std_Y,std_Z,right,left\n";
 	for (Eigen::Index i = 0; i < blue_cones.rows(); ++i) {
 		f << "blue," << blue_cones(i, 0) << "," << blue_cones(i, 1) << ",0.0,0.0,0.0,0.0,0,1\n";
@@ -222,7 +233,7 @@ inline void save_cones(const std::filesystem::path &filename,
 inline void save_center_line(const std::filesystem::path &filename,
 			     const Eigen::MatrixX2d &center_line,
 			     const Eigen::MatrixX2d &track_widths) {
-	std::ofstream f(filename);
+	auto f = detail::open_for_writing(filename);
 	f << "x,y,right_width,left_width\n";
 	for (Eigen::Index i = 0; i < center_line.rows(); ++i) {
 		f << center_line(i, 0) << "," << center_line(i, 1) << "," << track_widths(i, 0) << ","

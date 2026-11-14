@@ -78,6 +78,24 @@ int main(int argc, char **argv) {
 		CHECK(std::string(e.what()).find("center line") != std::string::npos);
 	}
 
+	// saving keeps full double precision
+	{
+		Eigen::MatrixX2d precise(1, 2);
+		precise << 1234.56789012345, -0.000123456789012345;
+		tdb::save_cones(dir / "precise_cones.csv", precise);
+		CHECK(tdb::load_cones(dir / "precise_cones.csv").blue_cones == precise);
+		tdb::save_center_line(dir / "precise_center_line.csv", precise, precise);
+		CHECK(tdb::load_center_line(dir / "precise_center_line.csv").first == precise);
+	}
+
+	// saving to a folder that doesn't exist throws
+	try {
+		tdb::save_cones(dir / "missing_folder" / "x_cones.csv", BLUE);
+		CHECK(false);
+	} catch (const std::runtime_error &e) {
+		CHECK(std::string(e.what()).find("could not open") != std::string::npos);
+	}
+
 	// list and not found
 	CHECK((tdb::list_tracks(dir) == std::vector<std::string>{"my_track", "no_center_line", "renamed"}));
 	try {
