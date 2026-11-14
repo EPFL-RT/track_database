@@ -4,6 +4,11 @@ from typing import List
 from xml.dom.minidom import parseString
 from dict2xml import dict2xml
 
+try:
+    from .tracks import find_track_folder
+except ImportError:
+    from tracks import find_track_folder
+
 
 class WorldElement:
     """An element is an object populating a world file.
@@ -60,10 +65,15 @@ class TrackParser:
     based on a csv file FSDS compatible.
     """
 
-    PATH_TO_DATABASE = Path(__file__).parent / "data"
-
-    def __init__(self, track_name: str, add_sun: bool = True, add_ground: bool = True):
+    def __init__(
+        self,
+        track_name: str,
+        tracks_dir: str,
+        add_sun: bool = True,
+        add_ground: bool = True,
+    ):
         self.track_name = track_name
+        self.track_folder = Path(find_track_folder(track_name, tracks_dir))
         self.add_sun = add_sun
         self.add_ground = add_ground
         self.cones = self._read_csv(track_name)
@@ -78,9 +88,7 @@ class TrackParser:
         self._clean_xml()
 
     def _read_csv(self, track_name: str) -> pd.DataFrame:
-        track_folder_path = self.PATH_TO_DATABASE / track_name
-        cone_positions = track_name + "_cones.csv"
-        return pd.read_csv(track_folder_path / cone_positions)
+        return pd.read_csv(self.track_folder / (self.track_name + "_cones.csv"))
 
     def _extract_cone_information(self):
         for cone_type in self.cone_types:
@@ -130,5 +138,10 @@ class TrackParser:
 
 
 if __name__ == "__main__":
-    tp = TrackParser("skidpad", add_ground=True, add_sun=True)
-    tp.write_file(destination_folder=Path(__file__).parent / "data" / tp.track_name)
+    import sys
+
+    # usage: python export_as_world.py <tracks_dir> [track_name]
+    tracks_dir = sys.argv[1]
+    track_name = sys.argv[2] if len(sys.argv) > 2 else "skidpad"
+    tp = TrackParser(track_name, tracks_dir, add_ground=True, add_sun=True)
+    tp.write_file(destination_folder=tp.track_folder)

@@ -1,3 +1,14 @@
+# v4.0.0
+
+**Breaking:** the track data is no longer shipped with this package, it now lives in an
+external tracks folder.
+- removed `available_tracks` and the bundled `track_database/data` folder.
+- `load_track(name, tracks_dir)` loads `<tracks_dir>/<name>/`.
+- added `list_tracks(tracks_dir)` and `find_track_folder(name, tracks_dir)`.
+- added a header-only C++ library (`cpp/`) with the same API, to be used with CMake
+  `FetchContent`.
+- the track generator (`--output_dir`) and the world exporter take the tracks folder as argument.
+
 # v3.7.1 
 
 fixed order of points in random track generation and regenerated tracks 1 to 5 (not the same anymore)
