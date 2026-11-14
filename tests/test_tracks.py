@@ -67,3 +67,8 @@ def test_list_tracks(tracks_dir):
 def test_not_found_lists_available(tracks_dir):
     with pytest.raises(ValueError, match="my_track"):
         load_track("does_not_exist", tracks_dir=str(tracks_dir))
+
+
+def test_empty_name_raises(tracks_dir):
+    with pytest.raises(ValueError, match="not found"):
+        load_track("", tracks_dir=str(tracks_dir))

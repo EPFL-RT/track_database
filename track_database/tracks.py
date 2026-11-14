@@ -35,7 +35,7 @@ def find_track_folder(name: str, tracks_dir: str) -> str:
     listing the available tracks if it does not exist."""
     folder = os.path.abspath(os.path.expanduser(tracks_dir))
     candidate = os.path.join(folder, name)
-    if os.path.isdir(candidate):
+    if name and os.path.isdir(candidate):
         return candidate
     raise ValueError(
         f"Track '{name}' not found in {folder}. "
