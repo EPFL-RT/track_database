@@ -5,6 +5,7 @@ explicitly to every function, laid out as::
     <tracks_dir>/<track_name>/<track_name>_cones.csv
     <tracks_dir>/<track_name>/<track_name>_center_line.csv
 """
+
 import os
 from typing import Optional
 
@@ -52,6 +53,20 @@ def _find_file(folder: str, name: str, suffix: str) -> Optional[str]:
     return os.path.join(folder, matches[0]) if matches else None
 
 
+def _find_track_file(folder: str, name: str, kind: str) -> str:
+    """Returns the ``kind`` (``"cones"`` or ``"center_line"``) csv file of the track
+    ``name`` stored in ``folder``: ``<name>_<kind>.csv``, else any ``*_<kind>.csv``,
+    else any ``*<kind>.csv``. Raises a ``ValueError`` if there is none."""
+    path = _find_file(folder, name, f"_{kind}.csv") or _find_file(
+        folder, name, f"{kind}.csv"
+    )
+    if path is None:
+        raise ValueError(
+            f"No {kind.replace('_', ' ')} csv file found in track folder {folder}"
+        )
+    return path
+
+
 class Track:
     """
     Plain Old Data Structure (PODS) that represents a track. The track is defined by a
@@ -82,11 +97,6 @@ class Track:
         self.name = name
         self.folder = find_track_folder(name, tracks_dir)
 
-        cone_file = _find_file(self.folder, self.name, "_cones.csv") or _find_file(
-            self.folder, self.name, "cones.csv"
-        )
-        if cone_file is None:
-            raise ValueError(f"No cones csv file found in track folder {self.folder}")
         (
             self.blue_cones,
             self.yellow_cones,
@@ -94,16 +104,11 @@ class Track:
             self.small_orange_cones,
             self.right_cones,
             self.left_cones,
-        ) = load_cones(cone_file)
+        ) = load_cones(_find_track_file(self.folder, self.name, "cones"))
 
-        center_line_file = _find_file(
-            self.folder, self.name, "_center_line.csv"
-        ) or _find_file(self.folder, self.name, "center_line.csv")
-        if center_line_file is None:
-            raise ValueError(
-                f"No center line csv file found in track folder {self.folder}"
-            )
-        self.center_line, self.track_widths = load_center_line(center_line_file)
+        self.center_line, self.track_widths = load_center_line(
+            _find_track_file(self.folder, self.name, "center_line")
+        )
 
 
 def load_track(name: str, tracks_dir: str) -> Track:

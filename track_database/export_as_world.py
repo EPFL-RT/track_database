@@ -5,9 +5,9 @@ from xml.dom.minidom import parseString
 from dict2xml import dict2xml
 
 try:
-    from .tracks import find_track_folder
+    from .tracks import _find_track_file, find_track_folder
 except ImportError:
-    from tracks import find_track_folder
+    from tracks import _find_track_file, find_track_folder
 
 
 class WorldElement:
@@ -76,7 +76,7 @@ class TrackParser:
         self.track_folder = Path(find_track_folder(track_name, tracks_dir))
         self.add_sun = add_sun
         self.add_ground = add_ground
-        self.cones = self._read_csv(track_name)
+        self.cones = self._read_csv()
         self.cone_types = set(self.cones.cone_type)
         self.elements = []
         self._extract_cone_information()
@@ -87,8 +87,10 @@ class TrackParser:
         self._wrap_xml("sdf", "version", "1.4")
         self._clean_xml()
 
-    def _read_csv(self, track_name: str) -> pd.DataFrame:
-        return pd.read_csv(self.track_folder / (self.track_name + "_cones.csv"))
+    def _read_csv(self) -> pd.DataFrame:
+        return pd.read_csv(
+            _find_track_file(str(self.track_folder), self.track_name, "cones")
+        )
 
     def _extract_cone_information(self):
         for cone_type in self.cone_types:
