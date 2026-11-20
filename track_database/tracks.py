@@ -1,49 +1,70 @@
-# Copyright (c) Tudor Oancea, EPFL Racing Team Driverless 2022
-import os.path
-from os import listdir
+"""
+Track loading. Tracks live in a tracks folder, given
+explicitly to every function, laid out as::
+
+    <tracks_dir>/<track_name>/<track_name>_cones.csv
+    <tracks_dir>/<track_name>/<track_name>_center_line.csv
+"""
+
+import os
+from typing import Optional
 
 import numpy as np
 
 try:
-    from .utils import *
+    from .utils import load_cones, load_center_line
 except ImportError:
-    from utils import *
+    from utils import load_cones, load_center_line
 
-__all__ = ["available_tracks", "load_track", "Track"]
+__all__ = ["list_tracks", "find_track_folder", "load_track", "Track"]
 
-available_tracks = [
-    "21_05_2023",
-    "acceleration",
-    "acceleration_wide",
-    "accel_fsf_2025",
-    "accel_fsf_2025_v2",
-    "acceleration_4m",
-    "acceleration_4_5m",
-    "acceleration_5_5m",
-    "acceleration_large",
-    "ebs_test_fss",
-    "skidpad",
-    "skidpad_v2",
-    "skidpad_minimalist",
-    "skidpad_reversed",
-    "short_skidpad",
-    "skidpad_only_left",
-    "skidpad_only_right",
-    "skidpad_minimalist",
-    "fsds_competition_1",
-    "fsds_competition_2",
-    "fsds_competition_3",
-    "fsds_default",
-    "track_1",
-    "track_2",
-    "track_3",
-    "track_4",
-    "track_5",
-    "VSV",
-    "VSV_XS",
-    "VSV_XL",
-    "autoX_Vaudoise_Sponso",
-]
+
+def list_tracks(tracks_dir: str) -> list[str]:
+    """Returns the sorted names of the track folders found in ``tracks_dir``."""
+    folder = os.path.expanduser(tracks_dir)
+    if not os.path.isdir(folder):
+        return []
+    return sorted(
+        entry
+        for entry in os.listdir(folder)
+        if not entry.startswith(".") and os.path.isdir(os.path.join(folder, entry))
+    )
+
+
+def find_track_folder(name: str, tracks_dir: str) -> str:
+    """Returns the folder ``<tracks_dir>/<name>`` of a track, or raises a ``ValueError``
+    listing the available tracks if it does not exist."""
+    folder = os.path.abspath(os.path.expanduser(tracks_dir))
+    candidate = os.path.join(folder, name)
+    if name and os.path.isdir(candidate):
+        return candidate
+    raise ValueError(
+        f"Track '{name}' not found in {folder}. "
+        f"Available tracks: {list_tracks(folder)}"
+    )
+
+
+def _find_file(folder: str, name: str, suffix: str) -> Optional[str]:
+    """Looks for <name><suffix> first, then for any file ending with <suffix>."""
+    preferred = os.path.join(folder, name + suffix)
+    if os.path.isfile(preferred):
+        return preferred
+    matches = sorted(f for f in os.listdir(folder) if f.endswith(suffix))
+    return os.path.join(folder, matches[0]) if matches else None
+
+
+def _find_track_file(folder: str, name: str, kind: str) -> str:
+    """Returns the ``kind`` (``"cones"`` or ``"center_line"``) csv file of the track
+    ``name`` stored in ``folder``: ``<name>_<kind>.csv``, else any ``*_<kind>.csv``,
+    else any ``*<kind>.csv``. Raises a ``ValueError`` if there is none."""
+    path = _find_file(folder, name, f"_{kind}.csv") or _find_file(
+        folder, name, f"{kind}.csv"
+    )
+    if path is None:
+        raise ValueError(
+            f"No {kind.replace('_', ' ')} csv file found in track folder {folder}"
+        )
+    return path
 
 
 class Track:
@@ -62,6 +83,7 @@ class Track:
     """
 
     name: str
+    folder: str
     blue_cones: np.ndarray
     yellow_cones: np.ndarray
     big_orange_cones: np.ndarray
@@ -71,65 +93,24 @@ class Track:
     center_line: np.ndarray
     track_widths: np.ndarray
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, tracks_dir: str):
         self.name = name
-        if name not in available_tracks:
-            try:
-                cone_file = os.path.join(
-                    name,
-                    list(
-                        filter(
-                            lambda file: file.endswith("cones.csv"), os.listdir(name)
-                        )
-                    )[0],
-                )
-                print("Cone file : ", cone_file)
-                center_line = os.path.join(
-                    name,
-                    list(
-                        filter(
-                            lambda file: file.endswith("center_line.csv"),
-                            os.listdir(name),
-                        )
-                    )[0],
-                )
-                print("center line file : ", center_line)
-                (
-                    self.blue_cones,
-                    self.yellow_cones,
-                    self.big_orange_cones,
-                    self.small_orange_cones,
-                    self.right_cones,
-                    self.left_cones,
-                ) = load_cones(cone_file)
-                self.center_line, self.track_widths = load_center_line(center_line)
-            except IndexError:
-                raise ValueError(
-                    f"Track {name} not available, or could not find the required csv files. Available tracks are: {available_tracks}"
-                )
-        else:
-            path_to_file = (
-                os.path.dirname(__file__) + "/data/" + name + "/" + name + "_cones.csv"
-            )
-            path_to_center_line = (
-                os.path.dirname(__file__)
-                + "/data/"
-                + name
-                + "/"
-                + name
-                + "_center_line.csv"
-            )
-            (
-                self.blue_cones,
-                self.yellow_cones,
-                self.big_orange_cones,
-                self.small_orange_cones,
-                self.right_cones,
-                self.left_cones,
-            ) = load_cones(path_to_file)
+        self.folder = find_track_folder(name, tracks_dir)
 
-            self.center_line, self.track_widths = load_center_line(path_to_center_line)
+        (
+            self.blue_cones,
+            self.yellow_cones,
+            self.big_orange_cones,
+            self.small_orange_cones,
+            self.right_cones,
+            self.left_cones,
+        ) = load_cones(_find_track_file(self.folder, self.name, "cones"))
+
+        self.center_line, self.track_widths = load_center_line(
+            _find_track_file(self.folder, self.name, "center_line")
+        )
 
 
-def load_track(name: str) -> Track:
-    return Track(name)
+def load_track(name: str, tracks_dir: str) -> Track:
+    """Loads the track stored in the folder ``<tracks_dir>/<name>``."""
+    return Track(name, tracks_dir)

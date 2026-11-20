@@ -1,1 +1,0 @@
-recursive-include track_database/data *.csv

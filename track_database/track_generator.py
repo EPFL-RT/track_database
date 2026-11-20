@@ -518,7 +518,9 @@ class TrackGenerator:
 if __name__ == "__main__":
     parser = ArgumentParser("random_track_generator")
     parser.add_argument(
-        "--output_dir", default=os.path.join(os.path.dirname(__file__), "data")
+        "--output_dir",
+        required=True,
+        help="tracks folder in which the track folder is created",
     )
     parser.add_argument("--track_name", required=True)
     parser.add_argument("--seed", required=False)
