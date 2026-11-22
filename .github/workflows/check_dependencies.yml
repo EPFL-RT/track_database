@@ -1,5 +1,3 @@
-# Copyright (c) Tudor Oancea, EPFL Racing Team, 2022
-
 name: Check that that all the listed dependencies in requirements.txt and requirements_dev.txt are specified with a specific git tag
 on:
   pull_request:
