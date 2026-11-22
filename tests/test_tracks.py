@@ -66,3 +66,15 @@ def test_invalid_track_points_to_check(tmp_path):
 def test_missing_folder(tmp_path):
     with pytest.raises(ValueError, match="does not exist"):
         load_track(str(tmp_path / "nope"))
+
+
+def test_save_refuses_missing_sides(tmp_path, track):
+    track.sides = []
+    with pytest.raises(ValueError, match="same length"):
+        save_track(track, str(tmp_path))
+
+
+def test_save_refuses_missing_widths(tmp_path, track):
+    track.widths = track.widths[:-1]
+    with pytest.raises(ValueError, match="same length"):
+        save_track(track, str(tmp_path))

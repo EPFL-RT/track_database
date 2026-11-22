@@ -54,3 +54,15 @@ def test_plot(track_folder, tmp_path):
 def test_bad_track_is_an_error_message(tmp_path, capsys):
     assert main(["plot", str(tmp_path / "nope")]) == 1
     assert "error:" in capsys.readouterr().err
+
+
+def test_generate_refuses_to_overwrite(tmp_path, capsys):
+    out = str(tmp_path)
+    assert main(["generate", "random", out, "--count", "1"]) == 0
+    assert main(["generate", "random", out, "--count", "1"]) == 1
+    assert "use --force" in capsys.readouterr().err
+    assert main(["generate", "random", out, "--count", "1", "--force"]) == 0
+
+
+def test_check_fails_on_an_empty_folder(tmp_path):
+    assert main(["check", str(tmp_path)]) == 1

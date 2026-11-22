@@ -1,2 +1,1 @@
-matplotlib
--e git+https://github.com/EPFL-RT-Driverless/trajectory_planning_helpers@v2.0.5#egg=trajectory_planning_helpers
+pytest

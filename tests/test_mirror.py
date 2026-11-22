@@ -48,5 +48,11 @@ def test_mirrored_track_stays_valid(tmp_path, track):
 
 def test_same_first_points_is_an_error(track):
     track.center_line[1] = track.center_line[0]
-    with pytest.raises(ValueError, match="first two center line points"):
+    with pytest.raises(ValueError, match="first two center line points are the same"):
+        mirror(track)
+
+
+def test_one_point_center_line_is_an_error(track):
+    track.center_line, track.widths = track.center_line[:1], track.widths[:1]
+    with pytest.raises(ValueError, match="at least 2 points"):
         mirror(track)

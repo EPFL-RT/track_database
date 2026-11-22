@@ -66,7 +66,7 @@ class Track:
         return self.cones[mask].reshape(-1, 2)
 
 
-def read_rows(path: str) -> list:
+def _read_rows(path: str) -> list:
     """Rows of a CSV file as dicts. A leading "#" in the header (numpy.savetxt) is ignored."""
     with open(path, newline="") as f:
         header = f.readline().lstrip("# \t").rstrip("\r\n")
@@ -80,14 +80,14 @@ def load_track(folder: str) -> Track:
     if not os.path.isdir(folder):
         raise ValueError(f"Track folder {folder} does not exist")
     try:
-        cone_rows = read_rows(cones_file(folder))
+        cone_rows = _read_rows(cones_file(folder))
         cones = np.array([[float(r["X"]), float(r["Y"])] for r in cone_rows])
         colors = [r["cone_type"] for r in cone_rows]
         sides = [
             "right" if r["right"] == "1" else "left" if r["left"] == "1" else "unknown"
             for r in cone_rows
         ]
-        line_rows = read_rows(center_line_file(folder))
+        line_rows = _read_rows(center_line_file(folder))
         values = np.array(
             [[float(r[k]) for k in CENTER_LINE_COLUMNS] for r in line_rows]
         ).reshape(-1, 4)
@@ -112,6 +112,14 @@ def save_track(track: Track, folder: str, decimals: Optional[int] = None) -> str
     ``<name>_center_line.csv``) and returns the track folder. Values are written with full
     precision, or with ``decimals`` decimals.
     """
+    if not len(track.cones) == len(track.colors) == len(track.sides):
+        raise ValueError(
+            f"{track.name}: cones, colors and sides must have the same length"
+        )
+    if len(track.center_line) != len(track.widths):
+        raise ValueError(
+            f"{track.name}: center_line and widths must have the same length"
+        )
     track_folder = os.path.join(os.path.expanduser(folder), track.name)
     os.makedirs(track_folder, exist_ok=True)
     with open(cones_file(track_folder), "w") as f:

@@ -249,7 +249,13 @@ def check_track(folder: str) -> Report:
 
 
 def _is_track_folder(path: str) -> bool:
-    return any(f.endswith(".csv") for f in os.listdir(path))
+    """A track folder contains one of its two files, or has no subfolder."""
+    if os.path.isfile(cones_file(path)) or os.path.isfile(center_line_file(path)):
+        return True
+    return not any(
+        os.path.isdir(os.path.join(path, d)) and not d.startswith(".")
+        for d in os.listdir(path)
+    )
 
 
 def check_path(path: str) -> list:

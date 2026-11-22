@@ -153,3 +153,16 @@ def test_check_path_on_a_tracks_folder(tmp_path, track):
     save_track(replace(track, name="other"), str(tmp_path))
     reports = check_path(str(tmp_path))
     assert [os.path.basename(r.folder) for r in reports] == ["other", "straight"]
+
+
+def test_empty_folder_is_an_error(tmp_path):
+    (report,) = check_path(str(tmp_path))
+    assert any("missing file" in e for e in _messages(report))
+
+
+def test_stray_csv_in_a_tracks_folder(tmp_path, track):
+    save_track(track, str(tmp_path))
+    (tmp_path / "notes.csv").write_text("a,b\n")
+    reports = check_path(str(tmp_path))
+    assert [os.path.basename(r.folder) for r in reports] == ["straight"]
+    assert reports[0].issues == []

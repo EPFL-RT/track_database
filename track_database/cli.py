@@ -55,8 +55,17 @@ def _generate_random(args) -> int:
     params = RandomTrackParams(
         **{f.name: getattr(args, f.name) for f in fields(RandomTrackParams)}
     )
-    for seed in range(args.start_seed, args.start_seed + args.count):
-        name = f"{args.prefix}{seed:03d}"
+    seeds = range(args.start_seed, args.start_seed + args.count)
+    names = [f"{args.prefix}{seed:03d}" for seed in seeds]
+    existing = [n for n in names if os.path.exists(os.path.join(args.out, n))]
+    if existing and not args.force:
+        print(
+            f"{', '.join(existing)} already exist in {args.out}, "
+            "use --force to overwrite them",
+            file=sys.stderr,
+        )
+        return 1
+    for seed, name in zip(seeds, names):
         track, info = generate_random_track(seed, name, params)
         folder = save_track(track, args.out, decimals=4)
         with open(os.path.join(folder, f"{name}_meta.json"), "w") as f:
@@ -122,6 +131,9 @@ def _parser() -> argparse.ArgumentParser:
         default="track_rand_",
         help="name prefix (default track_rand_; BRAINS' motion planning treats track_* as "
         "trackdrive)",
+    )
+    p.add_argument(
+        "--force", action="store_true", help="overwrite existing track folders"
     )
     defaults = RandomTrackParams()
     for f in fields(RandomTrackParams):

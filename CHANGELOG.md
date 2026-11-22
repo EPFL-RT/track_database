@@ -7,8 +7,8 @@ tracks itself.
 - added the track contract (README) and its check (`track_database.contract`).
 - added a random track generator adapted from the EUFS track generator (Apache License 2.0).
 - removed the bundled `track_database/data` folder, `available_tracks`, the old random track
-  generator, the Gazebo world exporter, `utils.py` (per-color loaders) and the `generate/`
-  and `work/` folders.
+  generator, the Gazebo world exporter, `utils.py` (per-color loaders), `primitives.py`, and
+  the `generate/` and `work/` folders.
 
 # v3.7.1 
 

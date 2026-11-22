@@ -20,7 +20,7 @@ orange cones. The same seed and parameters always give the same track.
 import cmath
 import math
 import random
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -31,9 +31,7 @@ __all__ = ["RandomTrackParams", "generate_random_track"]
 
 @dataclass
 class RandomTrackParams:
-    min_corner_radius: float = (
-        3.0  # [m] of the center line (FS hairpins: 9 m outer diameter)
-    )
+    min_corner_radius: float = 3.0  # [m] of the center line (FS hairpin)
     track_width: float = 3.0  # [m]
     max_frequency: int = 7  # track complexity
     amplitude: float = 1 / 3  # track complexity
@@ -298,6 +296,5 @@ def generate_random_track(seed: int, name: str, params: RandomTrackParams = None
         "max_frequency": p.max_frequency,
         "amplitude": p.amplitude,
         "generator": "track_database.random_track (adapted from the EUFS track generator)",
-        "params": asdict(p),
     }
     return track, info

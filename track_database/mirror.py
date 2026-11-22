@@ -19,6 +19,10 @@ def mirror(track: Track) -> Track:
     and yellow cones are swapped (blue cones stay on the left), as well as the sides and the
     right/left widths.
     """
+    if len(track.center_line) < 2:
+        raise ValueError(
+            f"{track.name}: the center line should contain at least 2 points"
+        )
     start = track.center_line[0]
     direction = track.center_line[1] - start
     if not np.any(direction):
