@@ -1,74 +1,68 @@
+import os
+
 import numpy as np
 import pytest
 
-from track_database import list_tracks, load_track
-from track_database.utils import save_center_line, save_cones
-
-BLUE = np.array([[-1.5, 0.0], [-1.5, 5.0]])
-YELLOW = np.array([[1.5, 0.0], [1.5, 5.0]])
-BIG_ORANGE = np.array([[-1.5, 10.0], [1.5, 10.0]])
-CENTER = np.array([[0.0, 0.0], [0.0, 5.0], [0.0, 10.0]])
-WIDTHS = np.full((3, 2), 1.5)
+from track_database import load_track, save_track
 
 
-def _make_track(folder, name, center_line=True, prefix=None):
-    track_dir = folder / name
-    track_dir.mkdir(parents=True)
-    prefix = name if prefix is None else prefix
-    save_cones(str(track_dir / f"{prefix}_cones.csv"), BLUE, YELLOW, BIG_ORANGE, [])
-    if center_line:
-        save_center_line(str(track_dir / f"{prefix}_center_line.csv"), CENTER, WIDTHS)
-    return track_dir
+def test_save_then_load_gives_the_same_track(track, track_folder):
+    assert os.path.basename(track_folder) == "straight"
+    assert sorted(os.listdir(track_folder)) == [
+        "straight_center_line.csv",
+        "straight_cones.csv",
+    ]
+    loaded = load_track(track_folder)
+    assert loaded.name == "straight"
+    np.testing.assert_array_equal(loaded.cones, track.cones)
+    assert loaded.colors == track.colors
+    assert loaded.sides == track.sides
+    np.testing.assert_array_equal(loaded.center_line, track.center_line)
+    np.testing.assert_array_equal(loaded.widths, track.widths)
 
 
-@pytest.fixture
-def tracks_dir(tmp_path):
-    _make_track(tmp_path, "my_track")
-    _make_track(tmp_path, "no_center_line", center_line=False)
-    _make_track(tmp_path, "renamed", prefix="other_name")
-    return tmp_path
+def test_full_precision_by_default(tmp_path, track):
+    track.cones[0] = [1234.56789012345, -0.000123456789012345]
+    loaded = load_track(save_track(track, str(tmp_path)))
+    np.testing.assert_array_equal(loaded.cones[0], track.cones[0])
 
 
-def _check(track):
-    np.testing.assert_array_equal(track.blue_cones, BLUE)
-    np.testing.assert_array_equal(track.yellow_cones, YELLOW)
-    np.testing.assert_array_equal(track.big_orange_cones, BIG_ORANGE)
-    assert track.small_orange_cones.shape == (0, 2)
-    np.testing.assert_array_equal(track.left_cones, np.vstack((BLUE, BIG_ORANGE[:1])))
+def test_fixed_decimals(tmp_path, track):
+    folder = save_track(track, str(tmp_path), decimals=4)
+    with open(os.path.join(folder, "straight_cones.csv")) as f:
+        f.readline()
+        assert f.readline().startswith("blue,-1.5000,5.0000,")
 
 
-def test_load_by_name_with_explicit_dir(tracks_dir):
-    track = load_track("my_track", tracks_dir=str(tracks_dir))
-    assert track.name == "my_track"
-    _check(track)
-    np.testing.assert_allclose(track.center_line, CENTER)
-    np.testing.assert_allclose(track.track_widths, WIDTHS)
+def test_trailing_slash(track_folder):
+    assert load_track(track_folder + "/").name == "straight"
 
 
-def test_tracks_dir_with_trailing_slash(tracks_dir):
-    track = load_track("my_track", str(tracks_dir) + "/")
-    assert track.name == "my_track"
-    _check(track)
+def test_hash_header(track, track_folder):
+    path = os.path.join(track_folder, "straight_center_line.csv")
+    with open(path) as f:
+        content = f.read()
+    with open(path, "w") as f:
+        f.write("# " + content)  # as written by numpy.savetxt
+    np.testing.assert_array_equal(
+        load_track(track_folder).center_line, track.center_line
+    )
 
 
-def test_any_prefix(tracks_dir):
-    _check(load_track("renamed", tracks_dir=str(tracks_dir)))
+def test_cones_of(track):
+    assert track.cones_of("big_orange").shape == (2, 2)
+    assert track.cones_of("small_orange").shape == (0, 2)
 
 
-def test_missing_center_line_raises(tracks_dir):
-    with pytest.raises(ValueError, match="center line"):
-        load_track("no_center_line", tracks_dir=str(tracks_dir))
+def test_invalid_track_points_to_check(tmp_path):
+    folder = tmp_path / "broken"
+    folder.mkdir()
+    (folder / "broken_cones.csv").write_text("cone_type,X\nblue,oops\n")
+    (folder / "broken_center_line.csv").write_text("x,y,right_width,left_width\n")
+    with pytest.raises(ValueError, match="track-db check"):
+        load_track(str(folder))
 
 
-def test_list_tracks(tracks_dir):
-    assert list_tracks(str(tracks_dir)) == ["my_track", "no_center_line", "renamed"]
-
-
-def test_not_found_lists_available(tracks_dir):
-    with pytest.raises(ValueError, match="my_track"):
-        load_track("does_not_exist", tracks_dir=str(tracks_dir))
-
-
-def test_empty_name_raises(tracks_dir):
-    with pytest.raises(ValueError, match="not found"):
-        load_track("", tracks_dir=str(tracks_dir))
+def test_missing_folder(tmp_path):
+    with pytest.raises(ValueError, match="does not exist"):
+        load_track(str(tmp_path / "nope"))
