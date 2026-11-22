@@ -1,116 +1,129 @@
 """
-Track loading. Tracks live in a tracks folder, given
-explicitly to every function, laid out as::
+Reading and writing track folders.
 
-    <tracks_dir>/<track_name>/<track_name>_cones.csv
-    <tracks_dir>/<track_name>/<track_name>_center_line.csv
+A track named ``<name>`` is a folder ``<name>/`` containing ``<name>_cones.csv`` and
+``<name>_center_line.csv``. See the README (track contract) for the exact format, and
+``contract.check_track`` to check a folder against it.
 """
 
+import csv
+import math
 import os
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 
-try:
-    from .utils import load_cones, load_center_line
-except ImportError:
-    from utils import load_cones, load_center_line
+__all__ = [
+    "COLORS",
+    "CONES_COLUMNS",
+    "CENTER_LINE_COLUMNS",
+    "Track",
+    "load_track",
+    "save_track",
+    "cones_file",
+    "center_line_file",
+]
 
-__all__ = ["list_tracks", "find_track_folder", "load_track", "Track"]
-
-
-def list_tracks(tracks_dir: str) -> list[str]:
-    """Returns the sorted names of the track folders found in ``tracks_dir``."""
-    folder = os.path.expanduser(tracks_dir)
-    if not os.path.isdir(folder):
-        return []
-    return sorted(
-        entry
-        for entry in os.listdir(folder)
-        if not entry.startswith(".") and os.path.isdir(os.path.join(folder, entry))
-    )
+COLORS = ("blue", "yellow", "big_orange", "small_orange")
+CONES_COLUMNS = ("cone_type", "X", "Y", "Z", "std_X", "std_Y", "std_Z", "right", "left")
+CENTER_LINE_COLUMNS = ("x", "y", "right_width", "left_width")
 
 
-def find_track_folder(name: str, tracks_dir: str) -> str:
-    """Returns the folder ``<tracks_dir>/<name>`` of a track, or raises a ``ValueError``
-    listing the available tracks if it does not exist."""
-    folder = os.path.abspath(os.path.expanduser(tracks_dir))
-    candidate = os.path.join(folder, name)
-    if name and os.path.isdir(candidate):
-        return candidate
-    raise ValueError(
-        f"Track '{name}' not found in {folder}. "
-        f"Available tracks: {list_tracks(folder)}"
-    )
+def cones_file(folder: str) -> str:
+    """Path of the cones file of the track folder ``folder``."""
+    name = os.path.basename(os.path.normpath(folder))
+    return os.path.join(folder, f"{name}_cones.csv")
 
 
-def _find_file(folder: str, name: str, suffix: str) -> Optional[str]:
-    """Looks for <name><suffix> first, then for any file ending with <suffix>."""
-    preferred = os.path.join(folder, name + suffix)
-    if os.path.isfile(preferred):
-        return preferred
-    matches = sorted(f for f in os.listdir(folder) if f.endswith(suffix))
-    return os.path.join(folder, matches[0]) if matches else None
+def center_line_file(folder: str) -> str:
+    """Path of the center line file of the track folder ``folder``."""
+    name = os.path.basename(os.path.normpath(folder))
+    return os.path.join(folder, f"{name}_center_line.csv")
 
 
-def _find_track_file(folder: str, name: str, kind: str) -> str:
-    """Returns the ``kind`` (``"cones"`` or ``"center_line"``) csv file of the track
-    ``name`` stored in ``folder``: ``<name>_<kind>.csv``, else any ``*_<kind>.csv``,
-    else any ``*<kind>.csv``. Raises a ``ValueError`` if there is none."""
-    path = _find_file(folder, name, f"_{kind}.csv") or _find_file(
-        folder, name, f"{kind}.csv"
-    )
-    if path is None:
-        raise ValueError(
-            f"No {kind.replace('_', ' ')} csv file found in track folder {folder}"
-        )
-    return path
-
-
+@dataclass
 class Track:
     """
-    Plain Old Data Structure (PODS) that represents a track. The track is defined by a
-    set of cones and a center line. The cones are stored in the following arrays:
-        blue_cones: array of blue cones
-        yellow_cones: array of yellow cones
-        big_orange_cones: array of big orange cones
-        small_orange_cones: array of small orange cones
-        right_cones: array of right cones
-        left_cones: array of left cones
-    The center line is stored in the following array:
-        center_line: array of points on the center line
-        track_widths: array of track widths at each point on the center line
+    A track, one entry per cone (in file order) and per center line point:
+        cones: (N, 2) cone positions
+        colors: color of each cone, one of COLORS
+        sides: side of each cone, "right", "left" or "unknown" (the right/left columns)
+        center_line: (M, 2) center line points
+        widths: (M, 2) right and left track widths at each center line point
     """
 
     name: str
-    folder: str
-    blue_cones: np.ndarray
-    yellow_cones: np.ndarray
-    big_orange_cones: np.ndarray
-    small_orange_cones: np.ndarray
-    right_cones: np.ndarray
-    left_cones: np.ndarray
-    center_line: np.ndarray
-    track_widths: np.ndarray
+    cones: np.ndarray = field(default_factory=lambda: np.zeros((0, 2)))
+    colors: list = field(default_factory=list)
+    sides: list = field(default_factory=list)
+    center_line: np.ndarray = field(default_factory=lambda: np.zeros((0, 2)))
+    widths: np.ndarray = field(default_factory=lambda: np.zeros((0, 2)))
 
-    def __init__(self, name: str, tracks_dir: str):
-        self.name = name
-        self.folder = find_track_folder(name, tracks_dir)
-
-        (
-            self.blue_cones,
-            self.yellow_cones,
-            self.big_orange_cones,
-            self.small_orange_cones,
-            self.right_cones,
-            self.left_cones,
-        ) = load_cones(_find_track_file(self.folder, self.name, "cones"))
-
-        self.center_line, self.track_widths = load_center_line(
-            _find_track_file(self.folder, self.name, "center_line")
-        )
+    def cones_of(self, color: str) -> np.ndarray:
+        """(K, 2) positions of the cones of one color."""
+        mask = np.array([c == color for c in self.colors], dtype=bool)
+        return self.cones[mask].reshape(-1, 2)
 
 
-def load_track(name: str, tracks_dir: str) -> Track:
-    """Loads the track stored in the folder ``<tracks_dir>/<name>``."""
-    return Track(name, tracks_dir)
+def read_rows(path: str) -> list:
+    """Rows of a CSV file as dicts. A leading "#" in the header (numpy.savetxt) is ignored."""
+    with open(path, newline="") as f:
+        header = f.readline().lstrip("# \t").rstrip("\r\n")
+        return list(csv.DictReader(f, fieldnames=header.split(",")))
+
+
+def load_track(folder: str) -> Track:
+    """Loads the track stored in ``folder`` (its name is the folder name)."""
+    folder = os.path.expanduser(folder)
+    name = os.path.basename(os.path.normpath(folder))
+    if not os.path.isdir(folder):
+        raise ValueError(f"Track folder {folder} does not exist")
+    try:
+        cone_rows = read_rows(cones_file(folder))
+        cones = np.array([[float(r["X"]), float(r["Y"])] for r in cone_rows])
+        colors = [r["cone_type"] for r in cone_rows]
+        sides = [
+            "right" if r["right"] == "1" else "left" if r["left"] == "1" else "unknown"
+            for r in cone_rows
+        ]
+        line_rows = read_rows(center_line_file(folder))
+        values = np.array(
+            [[float(r[k]) for k in CENTER_LINE_COLUMNS] for r in line_rows]
+        ).reshape(-1, 4)
+    except (OSError, KeyError, TypeError, ValueError) as e:
+        raise ValueError(
+            f"Invalid track {folder} ({e!r}): run `track-db check {folder}` for details"
+        ) from e
+    return Track(
+        name, cones.reshape(-1, 2), colors, sides, values[:, :2], values[:, 2:]
+    )
+
+
+def _number(value: float, decimals: Optional[int]) -> str:
+    if not math.isfinite(value):
+        raise ValueError(f"cannot save the non-finite value {value}")
+    return repr(float(value)) if decimals is None else f"{value:.{decimals}f}"
+
+
+def save_track(track: Track, folder: str, decimals: Optional[int] = None) -> str:
+    """
+    Writes ``track`` to ``folder/<name>/`` (``<name>_cones.csv`` and
+    ``<name>_center_line.csv``) and returns the track folder. Values are written with full
+    precision, or with ``decimals`` decimals.
+    """
+    track_folder = os.path.join(os.path.expanduser(folder), track.name)
+    os.makedirs(track_folder, exist_ok=True)
+    with open(cones_file(track_folder), "w") as f:
+        f.write(",".join(CONES_COLUMNS) + "\n")
+        for (x, y), color, side in zip(track.cones, track.colors, track.sides):
+            right, left = int(side == "right"), int(side == "left")
+            f.write(
+                f"{color},{_number(x, decimals)},{_number(y, decimals)},"
+                f"0.0,0.0,0.0,0.0,{right},{left}\n"
+            )
+    with open(center_line_file(track_folder), "w") as f:
+        f.write(",".join(CENTER_LINE_COLUMNS) + "\n")
+        for (x, y), (right, left) in zip(track.center_line, track.widths):
+            f.write(",".join(_number(v, decimals) for v in (x, y, right, left)) + "\n")
+    return track_folder
