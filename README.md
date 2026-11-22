@@ -22,13 +22,14 @@ This installs the `track-db` command (`python -m track_database` works too).
 ```bash
 track-db check ~/brains/tracks            # every track of a tracks folder
 track-db check ~/brains/tracks/skidpad    # one track
-track-db plot ~/brains/tracks/skidpad        # or --save skidpad.png
+track-db plot ~/brains/tracks/skidpad     # or --save skidpad.png
 track-db generate random ~/brains/tracks --count 5 --start-seed 100
 track-db mirror ~/brains/tracks/fsds_competition_1 ~/brains/tracks/fsds_competition_1_mirrored
 ```
 
 - `check` prints the errors and warnings of each track, with the file and line, and exits
   with 1 if a track has an error (`--strict`: or a warning).
+- `plot` draws a track. It opens a window, or saves the image with `--save` (the format follows the extension, e.g. `.png` or `.pdf`).
 - `generate random` writes closed tracks `<prefix><seed>/` (default prefix `track_rand_`),
   with a `<name>_meta.json` of the seed and parameters. The same seed always gives the same
   track. It refuses to overwrite existing track folders unless you pass `--force`.
