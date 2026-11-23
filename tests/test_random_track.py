@@ -26,11 +26,11 @@ def test_same_seed_same_track():
     assert not np.array_equal(a.cones, c.cones)
 
 
-def test_starts_at_the_origin_facing_x_between_4_big_orange_cones():
+def test_starts_at_the_origin_facing_y_between_4_big_orange_cones():
     track, _ = generate_random_track(0, "t")
     np.testing.assert_allclose(track.center_line[0], [0.0, 0.0], atol=1e-9)
     direction = track.center_line[1] - track.center_line[0]
-    assert abs(np.degrees(np.arctan2(direction[1], direction[0]))) < 2.0
+    assert abs(np.degrees(np.arctan2(direction[1], direction[0])) - 90.0) < 2.0
     assert track.colors.count("big_orange") == 4
 
 

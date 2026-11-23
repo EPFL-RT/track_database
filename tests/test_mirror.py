@@ -32,8 +32,8 @@ def test_mirror_twice_is_identity(track):
 
 
 @pytest.mark.parametrize("seed", [0, 3])
-def test_mirror_of_a_track_starting_along_x(tmp_path, seed):
-    track, _ = generate_random_track(seed, f"t{seed}")  # starts at (0, 0) facing +x
+def test_mirror_of_a_generated_track(tmp_path, seed):
+    track, _ = generate_random_track(seed, f"t{seed}")  # starts at (0, 0) facing +y
     mirrored = mirror(track)
     np.testing.assert_allclose(
         mirrored.center_line[:2], track.center_line[:2], atol=1e-12
