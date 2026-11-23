@@ -32,7 +32,9 @@ track-db mirror ~/brains/tracks/fsds_competition_1 ~/brains/tracks/fsds_competit
 - `plot` draws a track. It opens a window, or saves the image with `--save` (the format follows the extension, e.g. `.png` or `.pdf`).
 - `generate random` writes closed tracks `<prefix><seed>/` (default prefix `track_rand_`),
   with a `<name>_meta.json` of the seed and the main parameters. The same seed always gives the same
-  track. It refuses to overwrite existing track folders unless you pass `--force`.
+  track. A car spawned at (0, 0) facing +y (like on the BRAINS tracks) starts on a straight,
+  6 m behind the start line (`--starting-straight-length`). It refuses to overwrite existing
+  track folders unless you pass `--force`.
   `track-db generate random --help` lists the parameters (width, corner radius, length,
   cone spacing...). The generator is adapted from the
   [EUFS track generator](https://gitlab.com/eufs/public/eufs_sim) (see License).

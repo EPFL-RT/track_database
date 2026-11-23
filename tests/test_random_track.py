@@ -26,12 +26,17 @@ def test_same_seed_same_track():
     assert not np.array_equal(a.cones, c.cones)
 
 
-def test_starts_at_the_origin_facing_y_between_4_big_orange_cones():
+def test_start_line_is_ahead_of_the_spawn_facing_y():
+    ahead = RandomTrackParams().starting_straight_length
     track, _ = generate_random_track(0, "t")
-    np.testing.assert_allclose(track.center_line[0], [0.0, 0.0], atol=1e-9)
+    np.testing.assert_allclose(track.center_line[0], [0.0, ahead], atol=1e-9)
     direction = track.center_line[1] - track.center_line[0]
     assert abs(np.degrees(np.arctan2(direction[1], direction[0])) - 90.0) < 2.0
-    assert track.colors.count("big_orange") == 4
+    orange = track.cones_of("big_orange")
+    assert len(orange) == 4
+    np.testing.assert_allclose(orange[:, 1].mean(), ahead)
+    # the spawn (0, 0) is inside the track, behind the start line
+    assert np.min(np.linalg.norm(track.center_line, axis=1)) < 1.5
 
 
 def test_parameters_are_used():

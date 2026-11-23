@@ -11,11 +11,11 @@ The path generation, self-intersection check, start-line selection and cone plac
 adapted from the EUFS track generator. Changes made: np.complex (removed in NumPy 1.24) replaced
 by complex; the center line is kept and moved together with the cones; the global random module
 is no longer used, so a seed fully determines the track; the center line is resampled to a fixed
-spacing; the track is turned to start facing +y; the output is a track_database Track.
+spacing; the track is turned to start facing +y and moved so that the start line is ahead of
+(0, 0); the output is a track_database Track.
 
-The track starts at (0, 0) facing +y, at the end of
-its straightest stretch, between 4 big orange cones. The same seed and parameters always give
-the same track.
+The start line, between 4 big orange cones, is at the end of the track's straightest stretch, at
+(0, starting_straight_length), facing +y. The same seed and parameters always give the same track.
 """
 
 import cmath
@@ -281,6 +281,10 @@ def generate_random_track(seed: int, name: str, params: RandomTrackParams = None
     cones = np.concatenate((blue, yellow, orange))
     # Face +y to match BRAINS spawn (yaw = pi/2): turn by 90 degrees.
     cones, center = 1j * cones, 1j * center
+    # Start line starting_straight_length ahead of the spawn (0, 0), which is then on the
+    # straight before it (like the BRAINS tracks).
+    shift = 1j * p.starting_straight_length
+    cones, center = cones + shift, center + shift
     track = Track(
         name=name,
         cones=np.column_stack((cones.real, cones.imag)),
