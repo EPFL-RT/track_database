@@ -1,4 +1,3 @@
-# Copyright (c) Tudor Oancea, EPFL Racing Team Driverless 2022
 from setuptools import setup
 
 with open("README.md") as f:
@@ -15,14 +14,17 @@ with open("requirements.txt") as f:
 
 setup(
     name="track_database",
-    version="3.7.1",
+    version="4.0.0",
     packages=["track_database"],
     package_dir={"track_database": "track_database"},
-    package_data={"track_database": ["data/*.csv"]},
-    include_package_data=True,
-    url="https://github.com/EPFL-RT-Driverless/track_database",
+    package_data={"track_database": ["LICENSE.eufs_sim"]},
+    url="https://github.com/EPFL-RT/track_database",
     author="tudoroancea",
-    description="A Python package to gather some default Formula Student tracks as well as some utility functions to import/export them in CSV format and to create new custom tracks.",
+    license="MIT",
+    description="Command line tool to check, plot, generate and mirror Formula Student track folders (CSV files).",
     long_description=readme,
+    long_description_content_type="text/markdown",
+    python_requires=">=3.9",
     install_requires=requirements,
+    entry_points={"console_scripts": ["track-db=track_database.cli:main"]},
 )

@@ -1,5 +1,3 @@
-# Copyright (c) Tudor Oancea, EPFL Racing Team, 2022
-
 name: Check black style
 
 on:

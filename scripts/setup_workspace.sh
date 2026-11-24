@@ -1,4 +1,3 @@
-# Copyright (c) Tudor Oancea, EPFL Racing Team, 2022
 # create virtual environment (optional)
 if [ -d "venv*" ]
 then

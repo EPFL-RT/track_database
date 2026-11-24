@@ -1,39 +1,99 @@
 # track_database
 
-A Python package to gather some default Formula Student tracks as well as some
-utility functions to import/export them in CSV format and to create new custom
-tracks.
-These tracks are stored in a compatible format with FSDS to be loadable at
-runtime.
+A command line tool (and small Python package) to **check, plot, generate and mirror**
+Formula Student track folders. The tracks themselves live in BRAINS, which reads
+them with its own readers.
 
-## Installation
+This repository defines the **track contract** below: the file format BRAINS expects.
+`track-db check` tests a folder against it, so a broken track is caught before a node
+fails on it.
 
-You can install this package using `pip` after either cloning this repo or addding
-it as a git submodule to your project. If you have clone access to this repo, then
-you could also do it direclty with:
+## Install
+
+```bash
+uv tool install "git+https://github.com/EPFL-RT/track_database.git@v4.0.0"
+# or: pip install "git+https://github.com/EPFL-RT/track_database.git@v4.0.0"
 ```
-$ pip3 install git+git://github.com/FormulaStudent/track_database.git
+
+This installs the `track-db` command (`python -m track_database` works too).
+
+## Usage
+
+```bash
+track-db check ~/brains/tracks            # every track of a tracks folder
+track-db check ~/brains/tracks/skidpad    # one track
+track-db plot ~/brains/tracks/skidpad     # or --save skidpad.png
+track-db generate random ~/brains/tracks --count 5 --start-seed 100
+track-db mirror ~/brains/tracks/fsds_competition_1 ~/brains/tracks/fsds_competition_1_mirrored
 ```
 
-## Package description
-The package has the following modules:
-- `tracks.py`: defines the `Track` class (a *Plain Old Data Structure*, aka PODS,
-  containing the blue, yellow, big orange, small orange, left and right cones
-  positions, the center line points and the track widths) and the available tracks.
-- `primitives.py`: defines some useful functions to create tracks, such as
-- `line()`, `circle()` and `circular_arc()`.
-- `utils.py`: defines several utility functions (e.g. IO functions to save and
-  load track files).
+- `check` prints the errors and warnings of each track, with the file and line, and exits
+  with 1 if a track has an error (`--strict`: or a warning).
+- `plot` draws a track. It opens a window, or saves the image with `--save` (the format follows the extension, e.g. `.png` or `.pdf`).
+- `generate random` writes closed tracks `<prefix><seed>/` (default prefix `track_rand_`),
+  with a `<name>_meta.json` of the seed and the main parameters. The same seed always gives the same
+  track. A car spawned at (0, 0) facing +y (like on the BRAINS tracks) starts on a straight,
+  6 m behind the start line (`--starting-straight-length`). It refuses to overwrite existing
+  track folders unless you pass `--force`.
+  `track-db generate random --help` lists the parameters (width, corner radius, length,
+  cone spacing...). The generator is adapted from the
+  [EUFS track generator](https://gitlab.com/eufs/public/eufs_sim) (see License).
+- `mirror` writes the mirror image of a track, named after its new folder. It mirrors
+  across the start axis, so the start and its direction don't change. Blue and yellow
+  cones are swapped so that blue cones stay on the left.
 
-## Track file format description
-A track with name `track_name` is stored in the folder [`track_database/data`](track_database/data/)
-as a folder named `track_name` containing the following files:
-- `track_name_cones.csv`: contains the cones positions in a format compatible with FSDS to
-  be loadable at runtime: `cone_type,X,Y,Z,std_X,std_Y,std_Z,right,left`.
-  The `cone_type` is either `blue`, `yellow`, `big_orange` or `small_orange`.
-  The `right` and `left` columns are binary (0 or 1) values indicating if the cone
-  is on the right or left side of the track.
-  `std_X`, `std_Y` and `std_Z` are the standard deviations of the cone position,
-  usually 0.
-- `track_name_center_line.csv`: contains the center line points in the following format:
-  `x,y,right_width,left_width`.
+## Track contract
+
+A track named `<name>` is a folder `<name>/` containing these two files:
+
+**`<name>_cones.csv`**, one cone per row:
+```
+cone_type,X,Y,Z,std_X,std_Y,std_Z,right,left
+blue,-1.5,5.0,0.0,0.0,0.0,0.0,0,1
+```
+- `cone_type`: `blue`, `yellow`, `big_orange` or `small_orange`.
+- `X`, `Y` [m]: position. `Z` and the standard deviations `std_*` are not used (0).
+- `right`, `left`: 0 or 1, the side of the track the cone is on (not both 1).
+
+**`<name>_center_line.csv`**, at least 2 points:
+```
+x,y,right_width,left_width
+0.0,0.0,1.5,1.5
+```
+- `x`, `y` [m]: center line point. `right_width`, `left_width` [m] > 0: distance to the
+  right and left borders.
+
+Both files: the header is exactly the one above, without spaces (a leading `# `, as written
+by `numpy.savetxt`, is accepted), every row has all the columns, there are no spaces around
+the values, the numbers are plain decimals with an optional exponent (`1.5`, `-2e-3`; no
+`nan` or `inf`), and there are no blank lines.
+
+`track-db check` reports as **errors** everything above, plus a start line that doesn't
+cross the center line. It reports as **warnings**: blue cones not marked left or yellow ones
+not marked right, duplicate cones (closer than 5 cm), fewer than 2 big orange cones and a
+track narrower than 3 m.
+
+## Python
+
+```python
+from track_database import load_track, save_track, check_track, generate_random_track
+from track_database.mirror import mirror
+
+track = load_track("~/brains/tracks/fsds_competition_1")
+track.cones, track.colors, track.sides     # (N, 2) positions, one color and side per cone
+track.center_line, track.widths            # (M, 2) points, (M, 2) right and left widths
+save_track(mirror(track), "/tmp/tracks")   # writes /tmp/tracks/fsds_competition_1/
+check_track("/tmp/tracks/fsds_competition_1").errors
+```
+
+## Development
+
+```bash
+pip install -e . pytest
+python -m pytest tests
+```
+
+## License
+
+MIT (see LICENSE.md), except `track_database/random_track.py`, which is derived from the EUFS
+track generator and stays under the Apache License 2.0 (see `track_database/LICENSE.eufs_sim`).

@@ -1,4 +1,16 @@
-# v3.7.1 
+# v4.0.0
+
+**Breaking:** track_database is now a command line tool to check, plot, generate and mirror
+track folders. It no longer ships tracks and BRAINS no longer depends on it: BRAINS reads the
+tracks itself.
+- added the `track-db` command: `check`, `plot`, `generate random`, `mirror`.
+- added the track contract (README) and its check (`track_database.contract`).
+- added a random track generator adapted from the EUFS track generator (Apache License 2.0).
+- removed the bundled `track_database/data` folder, `available_tracks`, the old random track
+  generator, the Gazebo world exporter, `utils.py` (per-color loaders), `primitives.py`, and
+  the `generate/` and `work/` folders.
+
+# v3.7.1
 
 fixed order of points in random track generation and regenerated tracks 1 to 5 (not the same anymore)
 
