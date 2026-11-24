@@ -26,17 +26,21 @@ def test_same_seed_same_track():
     assert not np.array_equal(a.cones, c.cones)
 
 
-def test_start_line_is_ahead_of_the_spawn_facing_y():
-    ahead = RandomTrackParams().starting_straight_length
-    track, _ = generate_random_track(0, "t")
-    np.testing.assert_allclose(track.center_line[0], [0.0, ahead], atol=1e-9)
+@pytest.mark.parametrize("straight", [6.0, 25.0])
+def test_spawn_at_the_origin_facing_y_before_the_start_line(straight):
+    params = RandomTrackParams(starting_straight_length=straight)
+    track, _ = generate_random_track(0, "t", params)
+    # the center line starts at the spawn (0, 0), facing +y
+    np.testing.assert_allclose(track.center_line[0], [0.0, 0.0], atol=1e-9)
     direction = track.center_line[1] - track.center_line[0]
     assert abs(np.degrees(np.arctan2(direction[1], direction[0])) - 90.0) < 2.0
+    # the start line (4 big orange cones) is `straight` further along the center line
     orange = track.cones_of("big_orange")
     assert len(orange) == 4
-    np.testing.assert_allclose(orange[:, 1].mean(), ahead)
-    # the spawn (0, 0) is inside the track, behind the start line
-    assert np.min(np.linalg.norm(track.center_line, axis=1)) < 1.5
+    steps = np.linalg.norm(np.diff(track.center_line, axis=0), axis=1)
+    along = np.concatenate(([0.0], np.cumsum(steps)))
+    nearest = np.argmin(np.linalg.norm(track.center_line - orange.mean(axis=0), axis=1))
+    assert abs(along[nearest] - straight) <= params.spacing
 
 
 def test_parameters_are_used():

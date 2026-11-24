@@ -11,11 +11,13 @@ The path generation, self-intersection check, start-line selection and cone plac
 adapted from the EUFS track generator. Changes made: np.complex (removed in NumPy 1.24) replaced
 by complex; the center line is kept and moved together with the cones; the global random module
 is no longer used, so a seed fully determines the track; the center line is resampled to a fixed
-spacing; the track is turned to start facing +y and moved so that the start line is ahead of
-(0, 0); the output is a track_database Track.
+spacing; the track is moved so that the car spawn, starting_straight_length before the start
+line along the track, is at (0, 0) facing +y, and the center line starts at the spawn; the output
+is a track_database Track.
 
-The start line, between 4 big orange cones, is at the end of the track's straightest stretch, at
-(0, starting_straight_length), facing +y. The same seed and parameters always give the same track.
+The start line, between 4 big orange cones, is at the end of the track's straightest stretch. A
+car spawned at (0, 0) facing +y is on the center line, aligned with it, starting_straight_length
+before the start line. The same seed and parameters always give the same track.
 """
 
 import cmath
@@ -277,14 +279,19 @@ def generate_random_track(seed: int, name: str, params: RandomTrackParams = None
     )
     blue, yellow = blue[1:], yellow[1:]
 
-    center = resample(points, p.spacing)
-    cones = np.concatenate((blue, yellow, orange))
-    # Face +y to match BRAINS spawn (yaw = pi/2): turn by 90 degrees.
-    cones, center = 1j * cones, 1j * center
-    # Start line starting_straight_length ahead of the spawn (0, 0), which is then on the
-    # straight before it (like the BRAINS tracks).
-    shift = 1j * p.starting_straight_length
-    cones, center = cones + shift, center + shift
+    # Spawn: starting_straight_length before the start line (index 0), walking the path back.
+    backwards = np.append(points[:1], points[:0:-1])
+    distance_back = np.cumsum(abs(np.diff(backwards)))
+    steps = min(
+        np.searchsorted(distance_back, p.starting_straight_length), len(points) - 2
+    )
+    spawn = len(points) - 1 - steps  # index of the spawn in points
+
+    # Move the spawn to (0, 0) facing +y, like hess_sim. -1 / left normal turns the direction
+    # into +y. The center line starts at the spawn so that mirror() keeps it.
+    to_spawn = -1 / normals[spawn]
+    center = (resample(np.roll(points, -spawn), p.spacing) - points[spawn]) * to_spawn
+    cones = (np.concatenate((blue, yellow, orange)) - points[spawn]) * to_spawn
     track = Track(
         name=name,
         cones=np.column_stack((cones.real, cones.imag)),
